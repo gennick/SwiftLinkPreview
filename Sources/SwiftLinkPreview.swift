@@ -389,7 +389,7 @@ extension SwiftLinkPreview {
 
     // Perform the page crawiling
     private func performPageCrawling(_ htmlCode: String, response: Response) -> Response {
-        var result = self.crawIcon(htmlCode, result: response)
+        var result = response//self.crawIcon(htmlCode, result: response)
 
         let sanitizedHtmlCode = htmlCode.deleteTagByPattern(Regex.linkPattern).extendedTrim
 
@@ -397,9 +397,9 @@ extension SwiftLinkPreview {
 
         var otherResponse = self.crawlTitle(sanitizedHtmlCode, result: result)
 
-        otherResponse = self.crawlDescription(otherResponse.htmlCode, result: otherResponse.result)
+//        otherResponse = self.crawlDescription(otherResponse.htmlCode, result: otherResponse.result)
         
-        otherResponse = self.crawlPrice(otherResponse.htmlCode, result: otherResponse.result)
+//        otherResponse = self.crawlPrice(otherResponse.htmlCode, result: otherResponse.result)
 
         return self.crawlImages(otherResponse.htmlCode, result: otherResponse.result)
     }
@@ -483,15 +483,20 @@ extension SwiftLinkPreview {
 
         let possibleTags: [String] = [
             Response.Key.title.rawValue,
-            Response.Key.description.rawValue,
+//            Response.Key.description.rawValue,
             Response.Key.image.rawValue,
-            Response.Key.video.rawValue,
+//            Response.Key.video.rawValue,
         ]
 
         let metatags = Regex.pregMatchAll(htmlCode, regex: Regex.metatagPattern, index: 1)
 
         for metatag in metatags {
             for tag in possibleTags {
+                guard let key = Response.Key(rawValue: tag),
+                    result.value(for: key) == nil else {
+                        continue
+                }
+                
                 if (metatag.range(of: "property=\"og:\(tag)") != nil ||
                     metatag.range(of: "property='og:\(tag)") != nil ||
                     metatag.range(of: "name=\"twitter:\(tag)") != nil ||
@@ -500,20 +505,17 @@ extension SwiftLinkPreview {
                     metatag.range(of: "name='\(tag)") != nil ||
                     metatag.range(of: "itemprop=\"\(tag)") != nil ||
                     metatag.range(of: "itemprop='\(tag)") != nil) {
-
-                    if let key = Response.Key(rawValue: tag),
-                        result.value(for: key) == nil {
-                        if let value = Regex.pregMatchFirst(metatag, regex: Regex.metatagContentPattern, index: 2) {
-                            let value = value.decoded.extendedTrim
-                            if tag == "image" {
-                                let value = addImagePrefixIfNeeded(value, result: result)
-                                if value.isImage() { result.set(value, for: key) }
-                            } else if tag == "video" {
-                                let value = addImagePrefixIfNeeded(value, result: result)
-                                if value.isVideo() { result.set(value, for: key) }
-                            } else {
-                                result.set(value, for: key)
-                            }
+                    
+                    if let value = Regex.pregMatchFirst(metatag, regex: Regex.metatagContentPattern, index: 2) {
+                        let value = value.decoded.extendedTrim
+                        if tag == "image" {
+                            let value = addImagePrefixIfNeeded(value, result: result)
+                            if value.isImage() { result.set(value, for: key) }
+                        } else if tag == "video" {
+                            let value = addImagePrefixIfNeeded(value, result: result)
+                            if value.isVideo() { result.set(value, for: key) }
+                        } else {
+                            result.set(value, for: key)
                         }
                     }
                 }
